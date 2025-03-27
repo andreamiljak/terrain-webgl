@@ -7,7 +7,6 @@ import terrainFragmentShader from './shaders/terrain/fragment.glsl'
 
 
 
-
 const gui = new GUI({width: 340})
 
 const canvas = document.querySelector('canvas.webgl')
@@ -19,14 +18,20 @@ const debugObject = {
 }
 
 //Terrain geometry
-const planeGeometry = new THREE.PlaneGeometry(32, 32, 500, 500)
+const planeGeometry = new THREE.PlaneGeometry(8, 8, 500, 500)
 planeGeometry.rotateX(-Math.PI / 2)
 //Material
+
+const uniforms = {
+    uTime: new THREE.Uniform(0),
+    uFrequency: new THREE.Uniform(0.3),
+}
 const planeMaterial = new CustomShaderMaterial({
     //CSM
     baseMaterial: THREE.MeshStandardMaterial,
     vertexShader: terrainVertexShader,
     fragmentShader: terrainFragmentShader,
+    uniforms,
 
     color: debugObject.planeColor,
     metalness: 0,
@@ -42,10 +47,11 @@ gui.addColor(debugObject, 'planeColor').name('Terrain Color').onChange(() =>
 {
     planeMaterial.color.set(debugObject.planeColor)
 })
+gui.add(uniforms.uFrequency, 'value').min(0).max(1).step(0.001).name('uFrequency')
 
 //Lights
-const directionalLight = new THREE.DirectionalLight('#ffffff', 4)
-directionalLight.position.set(6.25, 9, 10)
+const directionalLight = new THREE.DirectionalLight('#ffffff', 2)
+directionalLight.position.set(2, 11, 4)
 directionalLight.castShadow = true
 directionalLight.shadow.mapSize.set(1024, 1024)
 directionalLight.shadow.camera.near = 0.1
@@ -85,24 +91,29 @@ camera.lookAt(0, 0, 0)
 scene.add(camera)
 
 const controls = new OrbitControls(camera, canvas)
-
+const axes = new THREE.AxesHelper(5)
+scene.add(axes)
 //Renderer
 const renderer = new THREE.WebGLRenderer({
-    canvas: canvas
+    canvas: canvas,
+    antialias: true
 })
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
+renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.toneMappingExposure = 1
 
 renderer.setSize(sizes.width, sizes.height)
-
-renderer.render(scene, camera)
-
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-
-//Animate
 
 const clock = new THREE.Clock()
 
 const tick = () => 
 {
+    const elapsedTime = clock.getElapsedTime()
+
+    uniforms.uTime.value = elapsedTime
+    
     controls.update()
 
     renderer.render(scene, camera)
