@@ -4,7 +4,8 @@ import GUI from 'lil-gui'
 import CustomShaderMaterial from 'three-custom-shader-material/vanilla'
 import terrainVertexShader from './shaders/terrain/vertex.glsl'
 import terrainFragmentShader from './shaders/terrain/fragment.glsl'
-
+import capsuleVertexShader from './shaders/capsule/vertex.glsl'
+import capsuleFragmentShader from './shaders/capsule/fragment.glsl'
 
 
 const gui = new GUI({width: 340})
@@ -14,7 +15,8 @@ const canvas = document.querySelector('canvas.webgl')
 const scene = new THREE.Scene()
 
 const debugObject = {
-    planeColor: '#85d534'
+    planeColor: '#85d534',
+    capsuleColor: '#ca91d9'
 }
 
 //Terrain geometry
@@ -38,6 +40,9 @@ const planeMaterial = new CustomShaderMaterial({
     roughness: 0.6
 })
 
+
+
+
 //Mesh
 const mesh = new THREE.Mesh(planeGeometry, planeMaterial)
 
@@ -48,6 +53,24 @@ gui.addColor(debugObject, 'planeColor').name('Terrain Color').onChange(() =>
     planeMaterial.color.set(debugObject.planeColor)
 })
 gui.add(uniforms.uFrequency, 'value').min(0).max(1).step(0.001).name('uFrequency')
+
+//Capsule mesh
+
+
+const capsuleGeometry = new THREE.CapsuleGeometry( 0.1, 0.1, 16, 16 )
+
+const capsuleMaterial = new CustomShaderMaterial( {
+    baseMaterial: THREE.MeshStandardMaterial,
+    vertexShader: capsuleVertexShader,
+    fragmentShader: capsuleFragmentShader,
+    uniforms,
+    color: debugObject.capsuleColor
+
+
+} ) 
+const capsule = new THREE.Mesh(capsuleGeometry, capsuleMaterial )
+scene.add(capsule)
+
 
 //Lights
 const directionalLight = new THREE.DirectionalLight('#ffffff', 2)
