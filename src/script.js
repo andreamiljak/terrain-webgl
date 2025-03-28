@@ -6,6 +6,7 @@ import terrainVertexShader from './shaders/terrain/vertex.glsl'
 import terrainFragmentShader from './shaders/terrain/fragment.glsl'
 import capsuleVertexShader from './shaders/capsule/vertex.glsl'
 import capsuleFragmentShader from './shaders/capsule/fragment.glsl'
+import { element } from 'three/tsl'
 
 
 const gui = new GUI({width: 340})
@@ -27,6 +28,8 @@ planeGeometry.rotateX(-Math.PI / 2)
 const uniforms = {
     uTime: new THREE.Uniform(0),
     uFrequency: new THREE.Uniform(0.3),
+    uMoveOffsetX: new THREE.Uniform(0.0),
+    uMoveOffsetZ: new THREE.Uniform(0.0),
 }
 const planeMaterial = new CustomShaderMaterial({
     //CSM
@@ -91,6 +94,43 @@ const sizes = {
     height: window.innerHeight
 }
 
+let moveAmountX = 0
+let moveAmountZ = 0
+const moveSpeed = 0.02
+
+window.addEventListener('keydown', (event) => {
+    const forward = new THREE.Vector3()
+    camera.getWorldDirection(forward)
+    forward.y = 0
+    forward.normalize()
+    const right = new THREE.Vector3();
+    right.crossVectors(forward, new THREE.Vector3(0, 1, 0)); // Get right vector (perpendicular to forward)
+    right.normalize();
+
+    if (event.key === 'w' || event.key === "W") {
+        moveAmountX += forward.x * moveSpeed
+        moveAmountZ += forward.z * moveSpeed
+    }
+    if (event.key === 's' || event.key === "S") {
+        moveAmountX -= forward.x * moveSpeed
+        moveAmountZ -= forward.z * moveSpeed
+    }
+    if (event.key === 'a' || event.key === "A") {
+        moveAmountX -= right.x * moveSpeed
+        moveAmountZ -= right.z * moveSpeed
+    }
+    if (event.key === 'd' || event.key === "D") {
+        moveAmountX += right.x * moveSpeed
+        moveAmountZ += right.z * moveSpeed
+    }
+    uniforms.uMoveOffsetX.value = moveAmountX
+    uniforms.uMoveOffsetZ.value = moveAmountZ
+
+
+})
+
+
+
 window.addEventListener('resize', () =>
     {
         // Update sizes
@@ -108,7 +148,7 @@ window.addEventListener('resize', () =>
     
 //Camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(0, 3, 5)
+camera.position.set(-1, 1, 0)
 camera.lookAt(0, 0, 0)
 scene.add(camera)
 
@@ -135,7 +175,7 @@ const tick = () =>
     const elapsedTime = clock.getElapsedTime()
 
     uniforms.uTime.value = elapsedTime
-    
+   
     controls.update()
 
     renderer.render(scene, camera)
