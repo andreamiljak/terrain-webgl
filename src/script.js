@@ -16,7 +16,7 @@ const scene = new THREE.Scene()
 
 const debugObject = {
     planeColor: '#85d534',
-    capsuleColor: '#ca91d9'
+    capsuleColor: '#ffffff'
 }
 
 //Terrain geometry
@@ -59,8 +59,7 @@ gui.add(uniforms.uFrequency, 'value').min(0).max(1).step(0.001).name('uFrequency
 
 const capsuleGeometry = new THREE.CapsuleGeometry( 0.1, 0.1, 16, 16 )
 
-const capsuleMaterial = new CustomShaderMaterial( {
-    baseMaterial: THREE.MeshStandardMaterial,
+const capsuleMaterial = new THREE.ShaderMaterial( {
     vertexShader: capsuleVertexShader,
     fragmentShader: capsuleFragmentShader,
     uniforms,
