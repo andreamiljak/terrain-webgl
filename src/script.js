@@ -98,37 +98,22 @@ let moveAmountX = 0
 let moveAmountZ = 0
 const moveSpeed = 0.02
 
+const keysPressed = {
+    w: false, 
+    a: false,
+    s: false,
+    d: false
+}
+
 window.addEventListener('keydown', (event) => {
-    const forward = new THREE.Vector3()
-    camera.getWorldDirection(forward)
-    forward.y = 0
-    forward.normalize()
-    const right = new THREE.Vector3();
-    right.crossVectors(forward, new THREE.Vector3(0, 1, 0)); // Get right vector (perpendicular to forward)
-    right.normalize();
-
-    if (event.key === 'w' || event.key === "W") {
-        moveAmountX += forward.x * moveSpeed
-        moveAmountZ += forward.z * moveSpeed
-    }
-    if (event.key === 's' || event.key === "S") {
-        moveAmountX -= forward.x * moveSpeed
-        moveAmountZ -= forward.z * moveSpeed
-    }
-    if (event.key === 'a' || event.key === "A") {
-        moveAmountX -= right.x * moveSpeed
-        moveAmountZ -= right.z * moveSpeed
-    }
-    if (event.key === 'd' || event.key === "D") {
-        moveAmountX += right.x * moveSpeed
-        moveAmountZ += right.z * moveSpeed
-    }
-    uniforms.uMoveOffsetX.value = moveAmountX
-    uniforms.uMoveOffsetZ.value = moveAmountZ
-
-
+    const key = event.key.toLowerCase()
+    if(keysPressed[key] !== undefined) keysPressed[key] = true
 })
 
+window.addEventListener('keyup', (event) => {
+    const key = event.key.toLowerCase()
+    if(keysPressed[key] !== undefined) keysPressed[key] = false
+})
 
 
 window.addEventListener('resize', () =>
@@ -175,7 +160,33 @@ const tick = () =>
     const elapsedTime = clock.getElapsedTime()
 
     uniforms.uTime.value = elapsedTime
+
+    const forward = new THREE.Vector3()
+    camera.getWorldDirection(forward)
+    forward.y = 0
+    forward.normalize()
+    const right = new THREE.Vector3()
+    right.crossVectors(forward, new THREE.Vector3(0, 1, 0)) 
+    right.normalize()
    
+    if (keysPressed.w) {
+        moveAmountX += forward.x * moveSpeed
+        moveAmountZ += forward.z * moveSpeed
+    }
+    if (keysPressed.s) {
+        moveAmountX -= forward.x * moveSpeed
+        moveAmountZ -= forward.z * moveSpeed
+    }
+    if (keysPressed.a) {
+        moveAmountX -= right.x * moveSpeed
+        moveAmountZ -= right.z * moveSpeed
+    }
+    if (keysPressed.d) {
+        moveAmountX += right.x * moveSpeed
+        moveAmountZ += right.z * moveSpeed
+    }
+    uniforms.uMoveOffsetX.value = moveAmountX
+    uniforms.uMoveOffsetZ.value = moveAmountZ
     controls.update()
 
     renderer.render(scene, camera)
