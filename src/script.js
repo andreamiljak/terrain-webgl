@@ -30,6 +30,7 @@ const uniforms = {
     uFrequency: new THREE.Uniform(0.3),
     uMoveOffsetX: new THREE.Uniform(0.0),
     uMoveOffsetZ: new THREE.Uniform(0.0),
+    uZoom: new THREE.Uniform(0.7)
 }
 const planeMaterial = new CustomShaderMaterial({
     //CSM
@@ -40,7 +41,7 @@ const planeMaterial = new CustomShaderMaterial({
 
     color: debugObject.planeColor,
     metalness: 0,
-    roughness: 0.6
+    roughness: 1
 })
 
 
@@ -96,7 +97,7 @@ const sizes = {
 
 let moveAmountX = 0
 let moveAmountZ = 0
-const moveSpeed = 0.02
+// const moveSpeed = 1
 
 const keysPressed = {
     w: false, 
@@ -168,6 +169,8 @@ const tick = () =>
     const right = new THREE.Vector3()
     right.crossVectors(forward, new THREE.Vector3(0, 1, 0)) 
     right.normalize()
+
+    const moveSpeed = 0.01
    
     if (keysPressed.w) {
         moveAmountX += forward.x * moveSpeed
