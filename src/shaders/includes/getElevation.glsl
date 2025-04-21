@@ -11,7 +11,7 @@ float getElevation(vec2 position)
     position.x += uMoveOffsetX;
     position.y += uMoveOffsetZ;
 
-    vec2 offset = vec2(1.0, 0.0); 
+    vec2 offset = vec2(2.0, 0.0); 
     position += offset;
 
     vec2 zoomedPosition = position * uZoom;

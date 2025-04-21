@@ -6,7 +6,7 @@ import terrainVertexShader from './shaders/terrain/vertex.glsl'
 import terrainFragmentShader from './shaders/terrain/fragment.glsl'
 import capsuleVertexShader from './shaders/capsule/vertex.glsl'
 import capsuleFragmentShader from './shaders/capsule/fragment.glsl'
-import { element } from 'three/tsl'
+import { SimplexNoise } from 'three/examples/jsm/Addons.js'
 
 
 const gui = new GUI({width: 340})
@@ -20,8 +20,12 @@ const debugObject = {
     capsuleColor: '#ffffff'
 }
 
+const capsulePosition = new THREE.Vector3(0, 0, 0)
+const moveDirection = new THREE.Vector3()
+const movementSpeed = 1
+
 //Terrain geometry
-const planeGeometry = new THREE.PlaneGeometry(8, 8, 500, 500)
+const planeGeometry = new THREE.PlaneGeometry(8, 8, 128, 128)
 planeGeometry.rotateX(-Math.PI / 2)
 //Material
 
@@ -45,8 +49,6 @@ const planeMaterial = new CustomShaderMaterial({
 })
 
 
-
-
 //Mesh
 const mesh = new THREE.Mesh(planeGeometry, planeMaterial)
 
@@ -59,7 +61,6 @@ gui.addColor(debugObject, 'planeColor').name('Terrain Color').onChange(() =>
 gui.add(uniforms.uFrequency, 'value').min(0).max(1).step(0.001).name('uFrequency')
 
 //Capsule mesh
-
 
 const capsuleGeometry = new THREE.CapsuleGeometry( 0.1, 0.1, 16, 16 )
 
@@ -88,16 +89,11 @@ directionalLight.shadow.camera.bottom = -8
 directionalLight.shadow.camera.left = -8
 scene.add(directionalLight)
 
-
 //sizes
 const sizes = {
     width: window.innerWidth,
     height: window.innerHeight
 }
-
-let moveAmountX = 0
-let moveAmountZ = 0
-// const moveSpeed = 1
 
 const keysPressed = {
     w: false, 
@@ -132,6 +128,7 @@ window.addEventListener('resize', () =>
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     })
     
+
 //Camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
 camera.position.set(-1, 1, 0)
@@ -139,6 +136,11 @@ camera.lookAt(0, 0, 0)
 scene.add(camera)
 
 const controls = new OrbitControls(camera, canvas)
+controls.enableDamping = true
+controls.dampingFactor = 0.05
+controls.enablePan = false
+controls.enableZoom = true
+controls.enableRotate = true
 const axes = new THREE.AxesHelper(5)
 scene.add(axes)
 //Renderer
@@ -154,13 +156,29 @@ renderer.toneMappingExposure = 1
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
+const simplex = new SimplexNoise()
+
+function getElevationAt(x, z) {
+    const zoom = uniforms.uZoom.value
+    const frequency = uniforms.uFrequency.value
+    const px = (x + uniforms.uMoveOffsetX.value + 1.0) * zoom
+    const pz = (z + uniforms.uMoveOffsetZ.value + 0.0) * zoom
+
+    let elevation = 0
+    elevation += simplex.noise(px * frequency, pz * frequency) / 2
+    elevation += simplex.noise(px * frequency * 2, pz * frequency * 2) / 4
+    elevation += simplex.noise(px * frequency * 4, pz * frequency * 4) / 8
+
+    return elevation
+}
+
 const clock = new THREE.Clock()
 
 const tick = () => 
 {
-    const elapsedTime = clock.getElapsedTime()
+    const deltaTime = clock.getDelta()
 
-    uniforms.uTime.value = elapsedTime
+    uniforms.uTime.value = clock.getElapsedTime
 
     const forward = new THREE.Vector3()
     camera.getWorldDirection(forward)
@@ -170,32 +188,42 @@ const tick = () =>
     right.crossVectors(forward, new THREE.Vector3(0, 1, 0)) 
     right.normalize()
 
-    const moveSpeed = 0.01
-   
-    if (keysPressed.w) {
-        moveAmountX += forward.x * moveSpeed
-        moveAmountZ += forward.z * moveSpeed
+    moveDirection.set(0, 0, 0)
+    if (keysPressed.w) moveDirection.add(forward)
+    if (keysPressed.s) moveDirection.sub(forward)
+    if (keysPressed.d) moveDirection.add(right)
+    if (keysPressed.a) moveDirection.sub(right)
+
+    if (moveDirection.length() > 0) {
+        moveDirection.normalize()
+        moveDirection.multiplyScalar(movementSpeed * deltaTime)
+        capsulePosition.add(moveDirection)
     }
-    if (keysPressed.s) {
-        moveAmountX -= forward.x * moveSpeed
-        moveAmountZ -= forward.z * moveSpeed
-    }
-    if (keysPressed.a) {
-        moveAmountX -= right.x * moveSpeed
-        moveAmountZ -= right.z * moveSpeed
-    }
-    if (keysPressed.d) {
-        moveAmountX += right.x * moveSpeed
-        moveAmountZ += right.z * moveSpeed
-    }
-    uniforms.uMoveOffsetX.value = moveAmountX
-    uniforms.uMoveOffsetZ.value = moveAmountZ
+
+    const elevation = getElevationAt(capsulePosition.x, capsulePosition.z)
+    capsule.position.set(capsulePosition.x, elevation, capsulePosition.z)
+
+    const behind = new THREE.Vector3()
+    camera.getWorldDirection(behind)
+    behind.y = 0
+    behind.normalize()
+
+    // Offset the camera behind the capsule
+    const offsetPosition = new THREE.Vector3()
+    offsetPosition.copy(capsule.position)
+    offsetPosition.addScaledVector(behind, -1.5) // 1.5 units behind
+    offsetPosition.y += 1                // 1 units above
+
+    camera.position.lerp(offsetPosition, 0.5) 
+
+    // Always look at capsule
+    controls.target.copy(capsule.position)
+
     controls.update()
 
     renderer.render(scene, camera)
 
     window.requestAnimationFrame(tick)
-
 }
 
 tick()
