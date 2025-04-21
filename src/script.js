@@ -20,6 +20,11 @@ const debugObject = {
     capsuleColor: '#ffffff'
 }
 
+
+let currentChunkX = 0
+let currentChunkZ = 0
+
+
 const capsulePosition = new THREE.Vector3(0, 0, 0)
 const moveDirection = new THREE.Vector3()
 const movementSpeed = 1
@@ -50,9 +55,24 @@ const planeMaterial = new CustomShaderMaterial({
 
 
 //Mesh
-const mesh = new THREE.Mesh(planeGeometry, planeMaterial)
+//chunk system
 
-scene.add(mesh)
+const chunkSize = 8
+const chunks = []
+
+for (let i = -1; i <= 1; i++) {
+    for(let j= -1; j <= 1; j++) {
+        const material = planeMaterial.clone()
+        material.uniforms.uChunkOffset = new THREE.Uniform(new THREE.Vector2(i * chunkSize, j * chunkSize))
+
+        const mesh = new THREE.Mesh(planeGeometry.clone(), material)
+        mesh.position.set(i * chunkSize, 0, j * chunkSize)
+        mesh.userData.chunkOffset = new THREE.Vector2(i, j)
+        scene.add(mesh)
+        chunks.push(mesh)
+    }
+
+}
 
 gui.addColor(debugObject, 'planeColor').name('Terrain Color').onChange(() =>
 {
@@ -141,7 +161,7 @@ controls.dampingFactor = 0.05
 controls.enablePan = false
 controls.enableZoom = true
 controls.enableRotate = true
-const axes = new THREE.AxesHelper(5)
+const axes = new THREE.AxesHelper(4)
 scene.add(axes)
 //Renderer
 const renderer = new THREE.WebGLRenderer({
@@ -178,7 +198,23 @@ const tick = () =>
 {
     const deltaTime = clock.getDelta()
 
-    uniforms.uTime.value = clock.getElapsedTime
+    uniforms.uTime.value = clock.getElapsedTime()
+
+    //chunk system
+    const currentChunkX = Math.floor((capsulePosition.x + chunkSize / 2) / chunkSize)
+    const currentChunkZ = Math.floor((capsulePosition.z + chunkSize / 2) / chunkSize)
+
+    chunks.forEach(chunk => {
+        const offset = chunk.userData.chunkOffset
+        const newX = (currentChunkX + offset.x) * chunkSize
+        const newZ = (currentChunkZ + offset.y) * chunkSize
+
+        chunk.position.set(newX, 0, newZ)
+
+        if (chunk.material.uniforms.uChunkOffset) {
+            chunk.material.uniforms.uChunkOffset.value.set(newX, newZ)
+        }
+    })
 
     const forward = new THREE.Vector3()
     camera.getWorldDirection(forward)

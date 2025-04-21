@@ -5,11 +5,12 @@ uniform float uFrequency;
 uniform float uMoveOffsetX;
 uniform float uMoveOffsetZ;
 uniform float uZoom;
+uniform vec2 uChunkOffset;
 
 float getElevation(vec2 position)
 {
-    position.x += uMoveOffsetX;
-    position.y += uMoveOffsetZ;
+    
+    position += uChunkOffset;
 
     vec2 offset = vec2(2.0, 0.0); 
     position += offset;
