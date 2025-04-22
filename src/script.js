@@ -24,7 +24,7 @@ const debugObject = {
 let currentChunkX = 0
 let currentChunkZ = 0
 
-
+let cameraFollowEnabled = true
 const capsulePosition = new THREE.Vector3(0, 0, 0)
 const moveDirection = new THREE.Vector3()
 const movementSpeed = 1
@@ -36,7 +36,7 @@ planeGeometry.rotateX(-Math.PI / 2)
 
 const uniforms = {
     uTime: new THREE.Uniform(0),
-    uFrequency: new THREE.Uniform(0.3),
+    uFrequency: new THREE.Uniform(0.15),
     uMoveOffsetX: new THREE.Uniform(0.0),
     uMoveOffsetZ: new THREE.Uniform(0.0),
     uZoom: new THREE.Uniform(0.7)
@@ -51,6 +51,7 @@ const planeMaterial = new CustomShaderMaterial({
     color: debugObject.planeColor,
     metalness: 0,
     roughness: 1
+    
 })
 
 
@@ -148,11 +149,23 @@ window.addEventListener('resize', () =>
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     })
     
+window.addEventListener('keydown', (event) => {
+    const key = event.key.toLowerCase()
 
+    if (keysPressed[key] !== undefined) {
+        keysPressed[key] = true;
+    }
+
+    if (key === 'b') {
+        cameraFollowEnabled = !cameraFollowEnabled;
+        console.log('Camera follow:', cameraFollowEnabled);
+    }
+})
 //Camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
+// const cameraOffset = new THREE.Vector3(-1.5, 1.5, 0)
 camera.position.set(-1, 1, 0)
-camera.lookAt(0, 0, 0)
+camera.lookAt(0, 1, 0)
 scene.add(camera)
 
 const controls = new OrbitControls(camera, canvas)
@@ -239,21 +252,26 @@ const tick = () =>
     const elevation = getElevationAt(capsulePosition.x, capsulePosition.z)
     capsule.position.set(capsulePosition.x, elevation, capsulePosition.z)
 
-    const behind = new THREE.Vector3()
-    camera.getWorldDirection(behind)
-    behind.y = 0
-    behind.normalize()
+    if(cameraFollowEnabled) {
+        const behind = new THREE.Vector3()
+        camera.getWorldDirection(behind)
+        behind.y = 0
+        behind.normalize()
 
-    // Offset the camera behind the capsule
-    const offsetPosition = new THREE.Vector3()
-    offsetPosition.copy(capsule.position)
-    offsetPosition.addScaledVector(behind, -1.5) // 1.5 units behind
-    offsetPosition.y += 1                // 1 units above
+        // Offset the camera behind the capsule
+        const offsetPosition = new THREE.Vector3()
+        offsetPosition.copy(capsule.position)
+        offsetPosition.addScaledVector(behind, -1.5) // 1.5 units behind
+        offsetPosition.y += capsule.position.y + 1 // 1 units above
 
-    camera.position.lerp(offsetPosition, 0.5) 
+        camera.position.lerp(offsetPosition, 0.9) 
+        const lookAtPosition = new THREE.Vector3().copy(capsule.position);
+        lookAtPosition.y += 0.5 // Look 0.5 unit above the capsule
 
-    // Always look at capsule
-    controls.target.copy(capsule.position)
+        // // Always look at capsule
+        controls.target.copy(lookAtPosition)
+    }
+    
 
     controls.update()
 
