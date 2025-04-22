@@ -262,7 +262,7 @@ const tick = () =>
         const offsetPosition = new THREE.Vector3()
         offsetPosition.copy(capsule.position)
         offsetPosition.addScaledVector(behind, -1.5) // 1.5 units behind
-        offsetPosition.y += capsule.position.y + 1 // 1 units above
+        offsetPosition.y = capsule.position.y + 1 // 1 units above
 
         camera.position.lerp(offsetPosition, 0.9) 
         const lookAtPosition = new THREE.Vector3().copy(capsule.position);
