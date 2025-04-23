@@ -29,10 +29,9 @@ const capsulePosition = new THREE.Vector3(0, 0, 0)
 const moveDirection = new THREE.Vector3()
 const movementSpeed = 1
 
-//Terrain geometry
-const planeGeometry = new THREE.PlaneGeometry(8, 8, 128, 128)
-planeGeometry.rotateX(-Math.PI / 2)
-//Material
+const chunkCount = 7
+const chunkSize = 8
+const chunks = []
 
 const uniforms = {
     uTime: new THREE.Uniform(0),
@@ -51,28 +50,47 @@ const planeMaterial = new CustomShaderMaterial({
     color: debugObject.planeColor,
     metalness: 0,
     roughness: 1
-    
 })
 
+//LOD
+
+function getLODLevel(distance) {
+    if (distance < 16) return 128
+    if (distance < 24) return 64
+    return 16
+}
 
 //Mesh
 //chunk system
 
-const chunkSize = 8
-const chunks = []
+const geometryCache = {}
 
-for (let i = -1; i <= 1; i++) {
-    for(let j= -1; j <= 1; j++) {
+function getGeometryForLOD(chunkSegment) {
+    if(!geometryCache[chunkSegment]) {
+        const geo = new THREE.PlaneGeometry(chunkSize, chunkSize, chunkSegment, chunkSegment)
+        geo.rotateX(-Math.PI / 2)
+        geometryCache[chunkSegment] = geo
+    }
+    return geometryCache[chunkSegment]
+}
+
+for (let i = -Math.floor(chunkCount / 2); i <= Math.floor(chunkCount/2); i++) {
+    for(let j= -Math.floor(chunkCount / 2); j <= Math.floor(chunkCount / 2); j++) {
+        const worldOffset = new THREE.Vector2(i * chunkSize, j * chunkSize)
+        const dist = worldOffset.length()
+        const chunkSegment = getLODLevel(dist)
+
+        const geometry = getGeometryForLOD(chunkSegment)
+        //geometry.rotateX(-Math.PI / 2)
         const material = planeMaterial.clone()
         material.uniforms.uChunkOffset = new THREE.Uniform(new THREE.Vector2(i * chunkSize, j * chunkSize))
 
-        const mesh = new THREE.Mesh(planeGeometry.clone(), material)
-        mesh.position.set(i * chunkSize, 0, j * chunkSize)
+        const mesh = new THREE.Mesh(geometry, material)
+        //mesh.position.set(i * chunkSize, 0, j * chunkSize)
         mesh.userData.chunkOffset = new THREE.Vector2(i, j)
         scene.add(mesh)
         chunks.push(mesh)
     }
-
 }
 
 gui.addColor(debugObject, 'planeColor').name('Terrain Color').onChange(() =>
