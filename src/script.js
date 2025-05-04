@@ -52,6 +52,32 @@ const planeMaterial = new CustomShaderMaterial({
     roughness: 1
 })
 
+//GRASS
+function createBladeGeometry() {
+    const bladeGeometry = new THREE.BufferGeometry()
+    const vertices = new Float32Array([
+        0, 0.5, 0,
+        -0.05, 0, 0,
+        0.05, 0, 0
+    ])
+    bladeGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+    bladeGeometry.setIndex([0, 1, 2])
+    bladeGeometry.computeVertexNormals()
+    return bladeGeometry
+}
+
+const grassGeometry = createBladeGeometry()
+grassGeometry.translate(0, 0.25, 0)
+const grassMaterial = new THREE.MeshBasicMaterial({ color: '#79e635', side: THREE.DoubleSide })
+const grassCount = 5000
+let bladePool = []
+const grassRadius = 4
+const grassMesh = new THREE.InstancedMesh(grassGeometry, grassMaterial, grassCount)
+grassMesh.frustumCulled = false
+scene.add(grassMesh)
+
+const dummy = new THREE.Object3D();
+
 //LOD
 
 function getLODLevel(distance) {
@@ -213,15 +239,42 @@ const simplex = new SimplexNoise()
 function getElevationAt(x, z) {
     const zoom = uniforms.uZoom.value
     const frequency = uniforms.uFrequency.value
-    const px = (x + uniforms.uMoveOffsetX.value + 1.0) * zoom
-    const pz = (z + uniforms.uMoveOffsetZ.value + 0.0) * zoom
+    const moveOffsetX = uniforms.uMoveOffsetX.value
+    const moveOffsetZ = uniforms.uMoveOffsetZ.value
+
+    let px = (x + moveOffsetX + 2.0) * zoom
+    let pz = (z + moveOffsetZ + 0.0) * zoom
 
     let elevation = 0
-    elevation += simplex.noise(px * frequency, pz * frequency) / 2
-    elevation += simplex.noise(px * frequency * 2, pz * frequency * 2) / 4
-    elevation += simplex.noise(px * frequency * 4, pz * frequency * 4) / 8
+    elevation += simplex.noise(px * frequency, pz * frequency) / 2.0
+    elevation += simplex.noise(px * frequency * 2.0, pz * frequency * 2.0) / 4.0
+    elevation += simplex.noise(px * frequency * 4.0, pz * frequency * 4.0) / 8.0
 
+    elevation *= 2.0
+    const elevationSign = Math.sign(elevation)
+    elevation = elevationSign * Math.pow(Math.abs(elevation), 2.0)
     return elevation
+}
+//blade spawn function
+function spawnGrassNearCapsule() {
+    while (bladePool.length < grassCount) {
+        const offsetX = (Math.random() - 0.5) * 2 * grassRadius
+        const offsetZ = (Math.random() - 0.5) * 2 * grassRadius
+
+        const worldX = capsulePosition.x + offsetX
+        const worldZ = capsulePosition.z + offsetZ
+
+        const dist = capsulePosition.distanceTo(new THREE.Vector3(worldX, 0, worldZ))
+        if (dist > grassRadius) continue
+
+        const y = getElevationAt(worldX, worldZ)
+
+        bladePool.push({
+            position: new THREE.Vector3(worldX, y, worldZ),
+            rotationY: Math.random() * Math.PI * 2,
+            scale: 0.4 + Math.random() * 0.2
+        })
+    }
 }
 
 const clock = new THREE.Clock()
@@ -267,6 +320,8 @@ const tick = () =>
         moveDirection.multiplyScalar(movementSpeed * deltaTime)
         capsulePosition.add(moveDirection)
     }
+    uniforms.uMoveOffsetX.value = -capsulePosition.x
+    uniforms.uMoveOffsetZ.value = -capsulePosition.z
 
     const elevation = getElevationAt(capsulePosition.x, capsulePosition.z)
     capsule.position.set(capsulePosition.x, elevation, capsulePosition.z)
@@ -291,8 +346,30 @@ const tick = () =>
         controls.target.copy(lookAtPosition)
     }
     
+    bladePool = bladePool.filter(blade => capsulePosition.distanceTo(blade.position) < grassRadius + 2)
 
     controls.update()
+    spawnGrassNearCapsule()
+
+    let visibleCount = 0
+
+    for (let i = 0; i < bladePool.length; i++) {
+        const blade = bladePool[i]
+        if (capsulePosition.distanceTo(blade.position) > grassRadius) continue
+
+        dummy.position.copy(blade.position)
+        dummy.rotation.y = blade.rotationY
+        dummy.scale.setScalar(blade.scale)
+        dummy.updateMatrix()
+
+        if (visibleCount < grassCount) {
+            grassMesh.setMatrixAt(visibleCount, dummy.matrix)
+            visibleCount++
+        }
+    }
+
+    grassMesh.count = visibleCount
+    grassMesh.instanceMatrix.needsUpdate = true
 
     renderer.render(scene, camera)
 
