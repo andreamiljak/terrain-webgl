@@ -55,9 +55,10 @@ const planeMaterial = new CustomShaderMaterial({
 //LOD
 
 function getLODLevel(distance) {
-    if (distance < 16) return 128
+    if (distance < 8) return 128
+    if (distance < 16) return 96
     if (distance < 24) return 64
-    return 16
+    else return 32
 }
 
 //Mesh
