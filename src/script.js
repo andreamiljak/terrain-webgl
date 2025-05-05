@@ -7,6 +7,8 @@ import terrainFragmentShader from './shaders/terrain/fragment.glsl'
 import capsuleVertexShader from './shaders/capsule/vertex.glsl'
 import capsuleFragmentShader from './shaders/capsule/fragment.glsl'
 import { SimplexNoise } from 'three/examples/jsm/Addons.js'
+import grassVertexShader from './shaders/grass/vertex.glsl'
+import grassFragmentShader from './shaders/grass/fragment.glsl'
 
 
 const gui = new GUI({width: 340})
@@ -19,10 +21,6 @@ const debugObject = {
     planeColor: '#85d534',
     capsuleColor: '#ffffff'
 }
-
-
-let currentChunkX = 0
-let currentChunkZ = 0
 
 let cameraFollowEnabled = true
 const capsulePosition = new THREE.Vector3(0, 0, 0)
@@ -67,16 +65,43 @@ function createBladeGeometry() {
 }
 
 const grassGeometry = createBladeGeometry()
-grassGeometry.translate(0, 0.25, 0)
-const grassMaterial = new THREE.MeshBasicMaterial({ color: '#79e635', side: THREE.DoubleSide })
-const grassCount = 5000
-let bladePool = []
-const grassRadius = 4
-const grassMesh = new THREE.InstancedMesh(grassGeometry, grassMaterial, grassCount)
-grassMesh.frustumCulled = false
+
+
+const grassMaterial = new THREE.ShaderMaterial({
+    vertexShader: grassVertexShader,
+    fragmentShader: grassFragmentShader,
+    uniforms: uniforms,
+    side: THREE.DoubleSide
+})
+
+ const grassCount = 5000
+ let bladePool = []
+ const grassRadius = 6
+ const grassMesh = new THREE.InstancedMesh(grassGeometry, grassMaterial, grassCount)
+ grassMesh.frustumCulled = false
 scene.add(grassMesh)
 
 const dummy = new THREE.Object3D();
+const rotations = new Float32Array(grassCount)
+const scales = new Float32Array(grassCount)
+
+const offsets = new Float32Array(grassCount * 3)
+
+grassMesh.geometry.setAttribute(
+    'aInstanceOffset',
+    new THREE.InstancedBufferAttribute(offsets, 3)
+)
+
+grassMesh.geometry.setAttribute(
+    'aRotation',
+    new THREE.InstancedBufferAttribute(rotations, 1)
+)
+
+grassMesh.geometry.setAttribute(
+    'aScale',
+    new THREE.InstancedBufferAttribute(scales, 1)
+)
+
 
 //LOD
 
@@ -339,7 +364,7 @@ const tick = () =>
         offsetPosition.y = capsule.position.y + 1 // 1 units above
 
         camera.position.lerp(offsetPosition, 0.9) 
-        const lookAtPosition = new THREE.Vector3().copy(capsule.position);
+        const lookAtPosition = new THREE.Vector3().copy(capsule.position)
         lookAtPosition.y += 0.5 // Look 0.5 unit above the capsule
 
         // // Always look at capsule
@@ -350,26 +375,36 @@ const tick = () =>
 
     controls.update()
     spawnGrassNearCapsule()
-
     let visibleCount = 0
 
     for (let i = 0; i < bladePool.length; i++) {
         const blade = bladePool[i]
         if (capsulePosition.distanceTo(blade.position) > grassRadius) continue
-
+    
         dummy.position.copy(blade.position)
         dummy.rotation.y = blade.rotationY
         dummy.scale.setScalar(blade.scale)
         dummy.updateMatrix()
-
+    
         if (visibleCount < grassCount) {
             grassMesh.setMatrixAt(visibleCount, dummy.matrix)
+    
+            offsets[visibleCount * 3 + 0] = blade.position.x
+            offsets[visibleCount * 3 + 1] = blade.position.y
+            offsets[visibleCount * 3 + 2] = blade.position.z
+
+            rotations[visibleCount] = blade.rotationY
+            scales[visibleCount] = blade.scale
+    
             visibleCount++
         }
     }
-
+    
     grassMesh.count = visibleCount
     grassMesh.instanceMatrix.needsUpdate = true
+    grassMesh.geometry.attributes.aInstanceOffset.needsUpdate = true
+    grassMesh.geometry.attributes.aRotation.needsUpdate = true
+    grassMesh.geometry.attributes.aScale.needsUpdate = true
 
     renderer.render(scene, camera)
 
