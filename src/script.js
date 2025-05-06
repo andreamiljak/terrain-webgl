@@ -280,25 +280,21 @@ function getElevationAt(x, z) {
     elevation = elevationSign * Math.pow(Math.abs(elevation), 2.0)
     return elevation
 }
-//blade spawn function
-function spawnGrassNearCapsule() {
-    while (bladePool.length < grassCount) {
-        const offsetX = (Math.random() - 0.5) * 2 * grassRadius
-        const offsetZ = (Math.random() - 0.5) * 2 * grassRadius
 
-        const worldX = capsulePosition.x + offsetX
-        const worldZ = capsulePosition.z + offsetZ
+for (let i = 0; i < grassCount; i++) {
+    const angle = Math.random() * Math.PI * 2
+    const radius = Math.sqrt(Math.random()) * grassRadius
+    const offsetX = Math.cos(angle) * radius
+    const offsetZ = Math.sin(angle) * radius
 
-        const dist = capsulePosition.distanceTo(new THREE.Vector3(worldX, 0, worldZ))
-        if (dist > grassRadius) continue
+    const x = capsulePosition.x + offsetX
+    const z = capsulePosition.z + offsetZ
+    const y = getElevationAt(x, z)
 
-        const y = getElevationAt(worldX, worldZ)
-
-        bladePool.push({
-            position: new THREE.Vector3(worldX, y, worldZ),
-            rotationY: Math.random() * Math.PI * 2,
-            scale: 0.4 + Math.random() * 0.2
-        })
+    bladePool[i] = {
+        position: new THREE.Vector3(x, y, z),
+        rotationY: Math.random() * Math.PI * 2,
+        scale: 0.4 + Math.random() * 0.2
     }
 }
 
@@ -371,33 +367,42 @@ const tick = () =>
         controls.target.copy(lookAtPosition)
     }
     
-    bladePool = bladePool.filter(blade => capsulePosition.distanceTo(blade.position) < grassRadius + 2)
-
     controls.update()
-    spawnGrassNearCapsule()
+   
     let visibleCount = 0
 
-    for (let i = 0; i < bladePool.length; i++) {
+    for (let i = 0; i < grassCount; i++) {
         const blade = bladePool[i]
-        if (capsulePosition.distanceTo(blade.position) > grassRadius) continue
-    
+        const dx = blade.position.x - capsulePosition.x
+        const dz = blade.position.z - capsulePosition.z
+        const distSq = dx * dx + dz * dz
+
+        if (distSq > grassRadius * grassRadius) {
+            // Move blade to the opposite side
+            const angle = Math.atan2(dz, dx) + Math.PI
+            const newX = capsulePosition.x + Math.cos(angle) * grassRadius
+            const newZ = capsulePosition.z + Math.sin(angle) * grassRadius
+            const newY = getElevationAt(newX, newZ)
+
+            blade.position.set(newX, newY, newZ)
+            blade.rotationY = Math.random() * Math.PI * 2
+            blade.scale = 0.4 + Math.random() * 0.2
+        }
+
         dummy.position.copy(blade.position)
         dummy.rotation.y = blade.rotationY
         dummy.scale.setScalar(blade.scale)
         dummy.updateMatrix()
-    
-        if (visibleCount < grassCount) {
-            grassMesh.setMatrixAt(visibleCount, dummy.matrix)
-    
-            offsets[visibleCount * 3 + 0] = blade.position.x
-            offsets[visibleCount * 3 + 1] = blade.position.y
-            offsets[visibleCount * 3 + 2] = blade.position.z
 
-            rotations[visibleCount] = blade.rotationY
-            scales[visibleCount] = blade.scale
-    
-            visibleCount++
-        }
+        grassMesh.setMatrixAt(i, dummy.matrix)
+        offsets[i * 3 + 0] = blade.position.x
+        offsets[i * 3 + 1] = blade.position.y
+        offsets[i * 3 + 2] = blade.position.z
+
+        rotations[i] = blade.rotationY
+        scales[i] = blade.scale
+
+        visibleCount++
     }
     
     grassMesh.count = visibleCount
