@@ -3,6 +3,7 @@
 attribute vec3 aInstanceOffset;
 attribute float aRotation;
 attribute float aScale;
+varying float vHeight;
 
 mat2 get2DRotationMatrix(float angle) {
     float c = cos(angle);
@@ -11,6 +12,7 @@ mat2 get2DRotationMatrix(float angle) {
 }
 void main() 
 {
+    vHeight = position.y;
     vec3 pos = position;
 
     //rotate

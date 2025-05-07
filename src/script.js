@@ -70,15 +70,17 @@ const grassGeometry = createBladeGeometry()
 const grassMaterial = new THREE.ShaderMaterial({
     vertexShader: grassVertexShader,
     fragmentShader: grassFragmentShader,
-    uniforms: uniforms,
-    side: THREE.DoubleSide
+    uniforms: uniforms
 })
 
- const grassCount = 5000
- let bladePool = []
- const grassRadius = 6
- const grassMesh = new THREE.InstancedMesh(grassGeometry, grassMaterial, grassCount)
- grassMesh.frustumCulled = false
+grassMaterial.uniforms.uBottomColor = {value: new THREE.Color('#4d7326')}
+grassMaterial.uniforms.uTopColor = {value: new THREE.Color('#a3d977')}
+
+const grassCount = 5000
+let bladePool = []
+const grassRadius = 6
+const grassMesh = new THREE.InstancedMesh(grassGeometry, grassMaterial, grassCount)
+grassMesh.frustumCulled = false
 scene.add(grassMesh)
 
 const dummy = new THREE.Object3D();
@@ -390,6 +392,11 @@ const tick = () =>
         }
 
         dummy.position.copy(blade.position)
+        const toCamera = new THREE.Vector3()
+        toCamera.subVectors(camera.position, blade.position)
+        toCamera.y = 0
+        toCamera.normalize()
+        blade.rotationY = Math.atan2(toCamera.x, toCamera.z)
         dummy.rotation.y = blade.rotationY
         dummy.scale.setScalar(blade.scale)
         dummy.updateMatrix()
