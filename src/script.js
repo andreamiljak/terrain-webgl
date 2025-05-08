@@ -76,15 +76,15 @@ const grassMaterial = new THREE.ShaderMaterial({
 grassMaterial.uniforms.uBottomColor = {value: new THREE.Color('#4d7326')}
 grassMaterial.uniforms.uTopColor = {value: new THREE.Color('#a3d977')}
 
-const grassCount = 5000
+uniforms.uCameraPosition = {value: new THREE.Vector3()}
+
+const grassCount = 50000
 let bladePool = []
 const grassRadius = 6
 const grassMesh = new THREE.InstancedMesh(grassGeometry, grassMaterial, grassCount)
 grassMesh.frustumCulled = false
 scene.add(grassMesh)
 
-const dummy = new THREE.Object3D();
-const rotations = new Float32Array(grassCount)
 const scales = new Float32Array(grassCount)
 
 const offsets = new Float32Array(grassCount * 3)
@@ -94,10 +94,7 @@ grassMesh.geometry.setAttribute(
     new THREE.InstancedBufferAttribute(offsets, 3)
 )
 
-grassMesh.geometry.setAttribute(
-    'aRotation',
-    new THREE.InstancedBufferAttribute(rotations, 1)
-)
+
 
 grassMesh.geometry.setAttribute(
     'aScale',
@@ -235,7 +232,6 @@ window.addEventListener('keydown', (event) => {
 })
 //Camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-// const cameraOffset = new THREE.Vector3(-1.5, 1.5, 0)
 camera.position.set(-1, 1, 0)
 camera.lookAt(0, 1, 0)
 scene.add(camera)
@@ -295,7 +291,6 @@ for (let i = 0; i < grassCount; i++) {
 
     bladePool[i] = {
         position: new THREE.Vector3(x, y, z),
-        rotationY: Math.random() * Math.PI * 2,
         scale: 0.4 + Math.random() * 0.2
     }
 }
@@ -307,6 +302,8 @@ const tick = () =>
     const deltaTime = clock.getDelta()
 
     uniforms.uTime.value = clock.getElapsedTime()
+
+    uniforms.uCameraPosition.value.copy(camera.position)
 
     //chunk system
     const currentChunkX = Math.floor((capsulePosition.x + chunkSize / 2) / chunkSize)
@@ -387,35 +384,20 @@ const tick = () =>
             const newY = getElevationAt(newX, newZ)
 
             blade.position.set(newX, newY, newZ)
-            blade.rotationY = Math.random() * Math.PI * 2
             blade.scale = 0.4 + Math.random() * 0.2
         }
 
-        dummy.position.copy(blade.position)
-        const toCamera = new THREE.Vector3()
-        toCamera.subVectors(camera.position, blade.position)
-        toCamera.y = 0
-        toCamera.normalize()
-        blade.rotationY = Math.atan2(toCamera.x, toCamera.z)
-        dummy.rotation.y = blade.rotationY
-        dummy.scale.setScalar(blade.scale)
-        dummy.updateMatrix()
-
-        grassMesh.setMatrixAt(i, dummy.matrix)
         offsets[i * 3 + 0] = blade.position.x
         offsets[i * 3 + 1] = blade.position.y
         offsets[i * 3 + 2] = blade.position.z
 
-        rotations[i] = blade.rotationY
         scales[i] = blade.scale
 
         visibleCount++
     }
     
     grassMesh.count = visibleCount
-    grassMesh.instanceMatrix.needsUpdate = true
     grassMesh.geometry.attributes.aInstanceOffset.needsUpdate = true
-    grassMesh.geometry.attributes.aRotation.needsUpdate = true
     grassMesh.geometry.attributes.aScale.needsUpdate = true
 
     renderer.render(scene, camera)
