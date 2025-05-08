@@ -3,7 +3,10 @@
 attribute vec3 aInstanceOffset;
 attribute float aScale;
 varying float vHeight;
+varying float vAlpha;
 uniform vec3 uCameraPosition;
+uniform float uGrassRadius;
+uniform vec3 uCapsulePosition;
 
 
 void main() 
@@ -22,8 +25,14 @@ void main()
     pos.xz = faceCamRotation * pos.xz;
 
     //scale
-    pos *= aScale;
+    float dist = length(bladeWorldPos.xz - uCapsulePosition.xz);
+    float scaleFactor = mix(0.3, 1.0, smoothstep(uGrassRadius, 0.0, dist));
+    pos *= aScale * scaleFactor;
 
+    //transparency
+    float t = smoothstep(uGrassRadius, 0.0, dist);
+    vAlpha = mix(0.0, 1.0, t);  
+    
     pos.xz += aInstanceOffset.xz;
     
     pos.y += elevation;

@@ -40,7 +40,9 @@ const uniforms = {
     uCameraPosition: new THREE.Uniform(new THREE.Vector3()),
     uBottomColor: new THREE.Uniform(new THREE.Color('#4d7326')),
     uTopColor: new THREE.Uniform(new THREE.Color('#a3d977')),
-    uPlane: new THREE.Uniform(new THREE.Color(debugObject.planeColor))
+    uPlane: new THREE.Uniform(new THREE.Color(debugObject.planeColor)),
+    uGrassRadius: new THREE.Uniform(6.0),
+    uCapsulePosition: new THREE.Uniform(new THREE.Vector3())
 }
 const planeMaterial = new CustomShaderMaterial({
     //CSM
@@ -73,8 +75,13 @@ const grassGeometry = createBladeGeometry()
 const grassMaterial = new THREE.ShaderMaterial({
     vertexShader: grassVertexShader,
     fragmentShader: grassFragmentShader,
-    uniforms: uniforms
+    uniforms: uniforms,
+    transparent: true
 })
+
+grassMaterial.transparent = true
+grassMaterial.alphaTest = 0.05
+grassMaterial.depthWrite = true
 
 const grassCount = 50000
 let bladePool = []
@@ -300,6 +307,7 @@ const tick = () =>
     uniforms.uTime.value = clock.getElapsedTime()
 
     uniforms.uCameraPosition.value.copy(camera.position)
+    uniforms.uCapsulePosition.value.copy(capsulePosition)
 
     //chunk system
     const currentChunkX = Math.floor((capsulePosition.x + chunkSize / 2) / chunkSize)
