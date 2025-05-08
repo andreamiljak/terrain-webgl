@@ -18,7 +18,7 @@ const canvas = document.querySelector('canvas.webgl')
 const scene = new THREE.Scene()
 
 const debugObject = {
-    planeColor: '#85d534',
+    planeColor: '#619f23',   //619f23   85d534
     capsuleColor: '#ffffff'
 }
 
@@ -36,7 +36,11 @@ const uniforms = {
     uFrequency: new THREE.Uniform(0.15),
     uMoveOffsetX: new THREE.Uniform(0.0),
     uMoveOffsetZ: new THREE.Uniform(0.0),
-    uZoom: new THREE.Uniform(0.7)
+    uZoom: new THREE.Uniform(0.7),
+    uCameraPosition: new THREE.Uniform(new THREE.Vector3()),
+    uBottomColor: new THREE.Uniform(new THREE.Color('#4d7326')),
+    uTopColor: new THREE.Uniform(new THREE.Color('#a3d977')),
+    uPlane: new THREE.Uniform(new THREE.Color(debugObject.planeColor))
 }
 const planeMaterial = new CustomShaderMaterial({
     //CSM
@@ -45,7 +49,6 @@ const planeMaterial = new CustomShaderMaterial({
     fragmentShader: terrainFragmentShader,
     uniforms,
 
-    color: debugObject.planeColor,
     metalness: 0,
     roughness: 1
 })
@@ -73,11 +76,6 @@ const grassMaterial = new THREE.ShaderMaterial({
     uniforms: uniforms
 })
 
-grassMaterial.uniforms.uBottomColor = {value: new THREE.Color('#4d7326')}
-grassMaterial.uniforms.uTopColor = {value: new THREE.Color('#a3d977')}
-
-uniforms.uCameraPosition = {value: new THREE.Vector3()}
-
 const grassCount = 50000
 let bladePool = []
 const grassRadius = 6
@@ -93,8 +91,6 @@ grassMesh.geometry.setAttribute(
     'aInstanceOffset',
     new THREE.InstancedBufferAttribute(offsets, 3)
 )
-
-
 
 grassMesh.geometry.setAttribute(
     'aScale',
@@ -137,7 +133,7 @@ for (let i = -Math.floor(chunkCount / 2); i <= Math.floor(chunkCount/2); i++) {
         material.uniforms.uChunkOffset = new THREE.Uniform(new THREE.Vector2(i * chunkSize, j * chunkSize))
 
         const mesh = new THREE.Mesh(geometry, material)
-        //mesh.position.set(i * chunkSize, 0, j * chunkSize)
+
         mesh.userData.chunkOffset = new THREE.Vector2(i, j)
         scene.add(mesh)
         chunks.push(mesh)
@@ -146,7 +142,7 @@ for (let i = -Math.floor(chunkCount / 2); i <= Math.floor(chunkCount/2); i++) {
 
 gui.addColor(debugObject, 'planeColor').name('Terrain Color').onChange(() =>
 {
-    planeMaterial.color.set(debugObject.planeColor)
+    uniforms.uPlane.value.set(debugObject.planeColor)
 })
 gui.add(uniforms.uFrequency, 'value').min(0).max(1).step(0.001).name('uFrequency')
 
