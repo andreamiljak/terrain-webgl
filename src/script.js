@@ -56,20 +56,55 @@ const planeMaterial = new CustomShaderMaterial({
 })
 
 //GRASS
-function createBladeGeometry() {
-    const bladeGeometry = new THREE.BufferGeometry()
+
+function createGrassPatchGeometry(bladesPerPatch = 25) {
+    const baseBlade = new THREE.BufferGeometry()
     const vertices = new Float32Array([
         0, 0.5, 0,
         -0.05, 0, 0,
         0.05, 0, 0
     ])
-    bladeGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
-    bladeGeometry.setIndex([0, 1, 2])
-    bladeGeometry.computeVertexNormals()
-    return bladeGeometry
+    baseBlade.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+    baseBlade.setIndex([0, 1, 2])
+
+    const patchGeometry = new THREE.BufferGeometry()
+
+    const positions = []
+    const offsets = []
+
+    for (let i = 0; i < bladesPerPatch; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const radius = Math.sqrt(Math.random()) * 0.3
+
+        const offsetX = Math.cos(angle) * radius
+        const offsetZ = Math.sin(angle) * radius
+
+        for (let j = 0; j < 3; j++) {
+            const index = j * 3
+            positions.push(
+                vertices[index + 0],
+                vertices[index + 1],
+                vertices[index + 2]
+            )
+            offsets.push(offsetX, 0, offsetZ)
+        }
+    }
+    patchGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    patchGeometry.setAttribute('aLocalOffset', new THREE.Float32BufferAttribute(offsets, 3))
+
+    const indices = []
+    for (let i = 0; i < bladesPerPatch; i++) {
+        const start = i * 3
+        indices.push(start, start + 1, start + 2)
+    }
+    patchGeometry.setIndex(indices)
+    patchGeometry.computeVertexNormals()
+
+    return patchGeometry
 }
 
-const grassGeometry = createBladeGeometry()
+
+const grassGeometry = createGrassPatchGeometry(25)
 
 
 const grassMaterial = new THREE.ShaderMaterial({
@@ -83,16 +118,16 @@ grassMaterial.transparent = true
 grassMaterial.alphaTest = 0.05
 grassMaterial.depthWrite = true
 
-const grassCount = 50000
-let bladePool = []
+const grassPatchCount = 3000
+let patchPool = []
 const grassRadius = 6
-const grassMesh = new THREE.InstancedMesh(grassGeometry, grassMaterial, grassCount)
+const grassMesh = new THREE.InstancedMesh(grassGeometry, grassMaterial, grassPatchCount)
 grassMesh.frustumCulled = false
 scene.add(grassMesh)
 
-const scales = new Float32Array(grassCount)
+const scales = new Float32Array(grassPatchCount)
 
-const offsets = new Float32Array(grassCount * 3)
+const offsets = new Float32Array(grassPatchCount * 3)
 
 grassMesh.geometry.setAttribute(
     'aInstanceOffset',
@@ -135,7 +170,6 @@ for (let i = -Math.floor(chunkCount / 2); i <= Math.floor(chunkCount/2); i++) {
         const chunkSegment = getLODLevel(dist)
 
         const geometry = getGeometryForLOD(chunkSegment)
-        //geometry.rotateX(-Math.PI / 2)
         const material = planeMaterial.clone()
         material.uniforms.uChunkOffset = new THREE.Uniform(new THREE.Vector2(i * chunkSize, j * chunkSize))
 
@@ -225,12 +259,12 @@ window.addEventListener('keydown', (event) => {
     const key = event.key.toLowerCase()
 
     if (keysPressed[key] !== undefined) {
-        keysPressed[key] = true;
+        keysPressed[key] = true
     }
 
     if (key === 'b') {
-        cameraFollowEnabled = !cameraFollowEnabled;
-        console.log('Camera follow:', cameraFollowEnabled);
+        cameraFollowEnabled = !cameraFollowEnabled
+        console.log('Camera follow:', cameraFollowEnabled)
     }
 })
 //Camera
@@ -282,7 +316,7 @@ function getElevationAt(x, z) {
     return elevation
 }
 
-for (let i = 0; i < grassCount; i++) {
+for (let i = 0; i < grassPatchCount; i++) {
     const angle = Math.random() * Math.PI * 2
     const radius = Math.sqrt(Math.random()) * grassRadius
     const offsetX = Math.cos(angle) * radius
@@ -292,7 +326,7 @@ for (let i = 0; i < grassCount; i++) {
     const z = capsulePosition.z + offsetZ
     const y = getElevationAt(x, z)
 
-    bladePool[i] = {
+    patchPool[i] = {
         position: new THREE.Vector3(x, y, z),
         scale: 0.4 + Math.random() * 0.2
     }
@@ -374,31 +408,28 @@ const tick = () =>
    
     let visibleCount = 0
 
-    for (let i = 0; i < grassCount; i++) {
-        const blade = bladePool[i]
-        const dx = blade.position.x - capsulePosition.x
-        const dz = blade.position.z - capsulePosition.z
-        const distSq = dx * dx + dz * dz
+    for (let i = 0; i < grassPatchCount; i++) {
+    const patch = patchPool[i]
+    const dx = patch.position.x - capsulePosition.x
+    const dz = patch.position.z - capsulePosition.z
+    const distSq = dx * dx + dz * dz
 
-        if (distSq > grassRadius * grassRadius) {
-            // Move blade to the opposite side
-            const angle = Math.atan2(dz, dx) + Math.PI
-            const newX = capsulePosition.x + Math.cos(angle) * grassRadius
-            const newZ = capsulePosition.z + Math.sin(angle) * grassRadius
-            const newY = getElevationAt(newX, newZ)
+    if (distSq > grassRadius * grassRadius) {
+        const angle = Math.atan2(dz, dx) + Math.PI
+        const newX = capsulePosition.x + Math.cos(angle) * grassRadius
+        const newZ = capsulePosition.z + Math.sin(angle) * grassRadius
+        const newY = getElevationAt(newX, newZ)
 
-            blade.position.set(newX, newY, newZ)
-            blade.scale = 0.4 + Math.random() * 0.2
-        }
-
-        offsets[i * 3 + 0] = blade.position.x
-        offsets[i * 3 + 1] = blade.position.y
-        offsets[i * 3 + 2] = blade.position.z
-
-        scales[i] = blade.scale
-
-        visibleCount++
+        patch.position.set(newX, newY, newZ)
+        patch.scale = 0.4 + Math.random() * 0.2
     }
+
+    offsets[i * 3 + 0] = patch.position.x
+    offsets[i * 3 + 1] = patch.position.y
+    offsets[i * 3 + 2] = patch.position.z
+    scales[i] = patch.scale
+    visibleCount++
+}
     
     grassMesh.count = visibleCount
     grassMesh.geometry.attributes.aInstanceOffset.needsUpdate = true

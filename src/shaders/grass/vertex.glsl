@@ -1,6 +1,7 @@
 #include ../includes/getElevation.glsl
 
 attribute vec3 aInstanceOffset;
+attribute vec3 aLocalOffset;
 attribute float aScale;
 varying float vHeight;
 varying float vAlpha;
@@ -14,10 +15,11 @@ void main()
     vHeight = position.y;
     vec3 pos = position;
 
-    float elevation = getElevation(aInstanceOffset.xz);
-    vec3 bladeWorldPos = vec3(aInstanceOffset.x, elevation, aInstanceOffset.z);
+    vec3 worldOffset = aInstanceOffset + aLocalOffset;
+    float elevation = getElevation(worldOffset.xz);
+    vec3 bladeWorldPos = vec3(worldOffset.x, elevation, worldOffset.z);
 
-    vec3 toCamera = normalize(uCameraPosition -bladeWorldPos);
+    vec3 toCamera = uCameraPosition - bladeWorldPos;
     toCamera.y = 0.0;
     toCamera = normalize(toCamera);
 
@@ -26,18 +28,18 @@ void main()
 
     //scale
     float dist = length(bladeWorldPos.xz - uCapsulePosition.xz);
-    float scaleFactor = mix(0.3, 1.0, smoothstep(uGrassRadius, 0.0, dist));
+    float t = smoothstep(uGrassRadius, 0.0, dist);
+    float scaleFactor = mix(0.3, 1.0, t);
     pos *= aScale * scaleFactor;
 
     //transparency
-    float t = smoothstep(uGrassRadius, 0.0, dist);
+    
     vAlpha = mix(0.0, 1.0, t);  
     
-    pos.xz += aInstanceOffset.xz;
     
     pos.y += elevation;
+    pos.xz += worldOffset.xz;
 
     // Apply transforms
-    vec4 worldPosition = modelMatrix * vec4(pos, 1.0);
-    gl_Position = projectionMatrix * viewMatrix * worldPosition;
+    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(pos, 1.0);
 }
