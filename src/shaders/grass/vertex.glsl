@@ -8,6 +8,7 @@ varying float vAlpha;
 uniform vec3 uCameraPosition;
 uniform float uGrassRadius;
 uniform vec3 uCapsulePosition;
+uniform float uWindTime;
 
 
 void main() 
@@ -39,6 +40,12 @@ void main()
     
     pos.y += elevation;
     pos.xz += worldOffset.xz;
+
+    float windStrength = 0.1;
+    float windSpeed = 1.0;
+
+    float sway = sin(uWindTime * windSpeed + aLocalOffset.x * 10.0 + aLocalOffset.z * 10.0);
+    pos.x += sway * windStrength * ( position.y);
 
     // Apply transforms
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(pos, 1.0);

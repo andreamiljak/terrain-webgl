@@ -41,8 +41,9 @@ const uniforms = {
     uBottomColor: new THREE.Uniform(new THREE.Color('#4d7326')),
     uTopColor: new THREE.Uniform(new THREE.Color('#a3d977')),
     uPlane: new THREE.Uniform(new THREE.Color(debugObject.planeColor)),
-    uGrassRadius: new THREE.Uniform(6.0),
-    uCapsulePosition: new THREE.Uniform(new THREE.Vector3())
+    uGrassRadius: new THREE.Uniform(8.0),
+    uCapsulePosition: new THREE.Uniform(new THREE.Vector3()),
+    uWindTime: new THREE.Uniform(0)
 }
 const planeMaterial = new CustomShaderMaterial({
     //CSM
@@ -57,7 +58,7 @@ const planeMaterial = new CustomShaderMaterial({
 
 //GRASS
 
-function createGrassPatchGeometry(bladesPerPatch = 25) {
+function createGrassPatchGeometry(bladesPerPatch) {
     const baseBlade = new THREE.BufferGeometry()
     const vertices = new Float32Array([
         0, 0.5, 0,
@@ -104,7 +105,7 @@ function createGrassPatchGeometry(bladesPerPatch = 25) {
 }
 
 
-const grassGeometry = createGrassPatchGeometry(25)
+const grassGeometry = createGrassPatchGeometry(30)
 
 
 const grassMaterial = new THREE.ShaderMaterial({
@@ -339,6 +340,7 @@ const tick = () =>
     const deltaTime = clock.getDelta()
 
     uniforms.uTime.value = clock.getElapsedTime()
+    uniforms.uWindTime.value = clock.getElapsedTime()
 
     uniforms.uCameraPosition.value.copy(camera.position)
     uniforms.uCapsulePosition.value.copy(capsulePosition)
