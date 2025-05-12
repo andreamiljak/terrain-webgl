@@ -204,6 +204,19 @@ const capsule = new THREE.Mesh(capsuleGeometry, capsuleMaterial )
 scene.add(capsule)
 
 
+//TRAIL
+const subdivisions = 128
+const trailData = new Float32Array(subdivisions * 4)
+const trailTexture = new THREE.DataTexture(
+    trailData, 
+    subdivisions, 1, 
+    THREE.RGBAFormat,
+    THREE.FloatType
+)
+trailTexture.needsUpdate = true
+
+uniforms.uTrailHistory = {value: trailTexture}
+uniforms.uSubdivisions = {value: subdivisions}
 //Lights
 const directionalLight = new THREE.DirectionalLight('#ffffff', 2)
 directionalLight.position.set(2, 11, 4)
@@ -437,9 +450,25 @@ const tick = () =>
     grassMesh.geometry.attributes.aInstanceOffset.needsUpdate = true
     grassMesh.geometry.attributes.aScale.needsUpdate = true
 
+    function updateTrailTexture(position, onGround) {
+         for (let i = subdivisions - 1; i > 0; i--) {
+        trailData[i * 4 + 0] = trailData[(i - 1) * 4 + 0] 
+        trailData[i * 4 + 1] = trailData[(i - 1) * 4 + 1] 
+        trailData[i * 4 + 2] = trailData[(i - 1) * 4 + 2] 
+        trailData[i * 4 + 3] = trailData[(i - 1) * 4 + 3] 
+    }
+    trailData[0] = position.x
+    trailData[1] = 0
+    trailData[2] = position.z
+    trailData[3] = onGround ? 1.0 : 0.0
+
+    trailTexture.needsUpdate = true
+    }
+    updateTrailTexture(capsulePosition, true)
+
     renderer.render(scene, camera)
 
     window.requestAnimationFrame(tick)
-}
+    }
 
 tick()
