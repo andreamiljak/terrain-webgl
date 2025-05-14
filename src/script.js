@@ -308,7 +308,15 @@ renderer.toneMappingExposure = 1
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
-const simplex = new SimplexNoise()
+function createSeededRandom(seed = 42) {
+    return function () {
+        seed = (seed * 16807) % 2147483647
+        return (seed - 1) / 2147483646
+    }
+}
+
+const seededRandom = createSeededRandom(42)
+const simplex = new SimplexNoise({ random: seededRandom })
 
 function getElevationAt(x, z) {
     const zoom = uniforms.uZoom.value
